@@ -1,0 +1,98 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Reports - University Workflow Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="card-title mb-0">Reports</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        This page allows you to generate and view reports for your courses.
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Student Performance</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Generate reports on student performance across assignments and exams.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary">Generate Report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Attendance Reports</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>View attendance statistics for your courses and students.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary">Generate Report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Course Statistics</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>View comprehensive statistics for your courses, including grades and completion rates.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary">Generate Report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-2">
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Assignment Submissions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Track assignment submission statistics and identify late or missing submissions.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary">Generate Report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Custom Reports</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>Create custom reports with specific metrics and parameters.</p>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary">Create Custom Report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

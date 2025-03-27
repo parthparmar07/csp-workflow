@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Workflow Manager</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4cc9f0;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4caf50;
+            --warning-color: #ff9800;
+            --danger-color: #f44336;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f7fa;
+        }
+        
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 250px;
+            background-color: var(--dark-color);
+            padding-top: 20px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        
+        .sidebar .nav-link {
+            color: #adb5bd;
+            padding: 12px 20px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            transition: 0.3s;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar .nav-link i {
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .sidebar.collapsed .nav-link span,
+        .sidebar.collapsed .sidebar-header span {
+            display: none;
+        }
+        
+        .sidebar-header {
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar-header i {
+            margin-right: 10px;
+            color: var(--accent-color);
+        }
+        
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+        
+        .content.expanded {
+            margin-left: 70px;
+        }
+        
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        /* Kanban board styles */
+        .kanban-board {
+            display: flex;
+            overflow-x: auto;
+            min-height: 70vh;
+            padding-bottom: 10px;
+        }
+        
+        .kanban-column {
+            min-width: 300px;
+            margin-right: 20px;
+            background-color: #f1f3f5;
+            border-radius: 5px;
+        }
+        
+        .kanban-column-header {
+            padding: 10px 15px;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .kanban-cards {
+            padding: 10px;
+            min-height: 200px;
+        }
+        
+        .kanban-card {
+            background-color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        
+        /* Calendar styles */
+        .calendar {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .calendar-day {
+            height: 100px;
+            border: 1px solid #e9ecef;
+            padding: 5px;
+            overflow-y: auto;
+        }
+        
+        .calendar-day:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .calendar-event {
+            padding: 2px 5px;
+            margin-bottom: 2px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Loading spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            visibility: hidden;
+        }
+        
+        /* User profile */
+        .profile-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .profile-img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 5px solid white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div class="spinner-overlay" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-university"></i>
+            <span>UniWorkflow</span>
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link active" href="#" data-page="dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="courses">
+                    <i class="fas fa-book"></i>
+                    <span>Courses</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="calendar">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Calendar</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="kanban">
+                    <i class="fas fa-tasks"></i>
+                    <span>Kanban Board</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="announcements">
+                    <i class="fas fa-bullhorn"></i>
+                    <span>Announcements</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="assignments">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Assignments</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="timeline">
+                    <i class="fas fa-stream"></i>
+                    <span>Timeline</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-page="reports">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reports</span>
+                </a>
+            </li>
+            <li class="nav-item mt-5">
+                <a class="nav-link" href="#" data-page="profile">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/logout" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Content -->
+    <div class="content" id="content">
+        <div class="navbar navbar-light mb-4">
+            <div class="container-fluid">
+                <button class="btn btn-link" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <div class="d-flex">
+                    <div class="dropdown me-3">
+                        <button class="btn btn-link position-relative" type="button" id="notificationsDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-bell"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                3
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
+                            <li><h6 class="dropdown-header">Notifications</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#">New announcement in CS101</a></li>
+                            <li><a class="dropdown-item" href="#">Assignment due tomorrow</a></li>
+                            <li><a class="dropdown-item" href="#">Your submission was graded</a></li>
+                        </ul>
+                    </div>
+                    <div class="user-profile">
+                        <img src="https://via.placeholder.com/40" class="rounded-circle" alt="User">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page containers -->
+        <div class="container-fluid" id="dashboardPage">
+            <!-- Dashboard content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="coursesPage">
+            <!-- Courses content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="calendarPage">
+            <!-- Calendar content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="kanbanPage">
+            <!-- Kanban board content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="announcementsPage">
+            <!-- Announcements content will be loaded here -->
+        </div>
+        
+        <div class="container-fluid d-none" id="assignmentsPage">
+            <!-- Assignments content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="timelinePage">
+            <!-- Timeline content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="reportsPage">
+            <!-- Reports content will be loaded here -->
+        </div>
+
+        <div class="container-fluid d-none" id="profilePage">
+            <!-- Profile content will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JQuery for easier AJAX calls -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Main Application JS -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

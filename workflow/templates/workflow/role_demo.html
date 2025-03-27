@@ -1,0 +1,193 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Role-Based UI Demo - University Workflow Manager{% endblock %}
+{% block role_demo_active %}active{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="alert alert-info">
+        <h4 class="alert-heading">Role-Based UI Demonstration</h4>
+        <p>This page demonstrates how the interface changes based on user roles. You are currently logged in as:</p>
+        <h5>
+            {{ user.get_full_name|default:user.username }} 
+            {% if user.is_admin %}
+                <span class="badge bg-danger">Administrator</span>
+            {% elif user.is_teacher %}
+                <span class="badge bg-primary">Teacher</span>
+            {% else %}
+                <span class="badge bg-success">Student</span>
+            {% endif %}
+        </h5>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Role-Based Navigation</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Common Navigation for All Users:</h6>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item">Dashboard</li>
+                        <li class="list-group-item">Courses</li>
+                        <li class="list-group-item">Calendar</li>
+                        <li class="list-group-item">Announcements</li>
+                        <li class="list-group-item">Kanban Boards</li>
+                    </ul>
+
+                    {% if user.is_teacher or user.is_admin %}
+                    <h6>Teacher-Only Navigation:</h6>
+                    <ul class="list-group mb-3">
+                        <li class="list-group-item">Manage Courses</li>
+                        <li class="list-group-item">Reports</li>
+                    </ul>
+                    {% endif %}
+
+                    {% if user.is_admin %}
+                    <h6>Admin-Only Navigation:</h6>
+                    <ul class="list-group">
+                        <li class="list-group-item">Admin Panel</li>
+                        <li class="list-group-item">User Management</li>
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Role-Based Permissions & Features</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Courses</h5>
+                        {% if user.is_admin %}
+                            <p>As an <strong>Administrator</strong>, you can:</p>
+                            <ul>
+                                <li>View all courses in the system</li>
+                                <li>Create new courses and assign teachers</li>
+                                <li>Edit or delete any course</li>
+                                <li>Manage student enrollments for any course</li>
+                            </ul>
+                        {% elif user.is_teacher %}
+                            <p>As a <strong>Teacher</strong>, you can:</p>
+                            <ul>
+                                <li>View all courses you teach</li>
+                                <li>Create new courses (you'll be set as the teacher)</li>
+                                <li>Edit or delete courses you teach</li>
+                                <li>Manage student enrollments for your courses</li>
+                            </ul>
+                        {% else %}
+                            <p>As a <strong>Student</strong>, you can:</p>
+                            <ul>
+                                <li>View courses you're enrolled in</li>
+                                <li>Access course materials and assignments</li>
+                                <li>View course announcements and events</li>
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Announcements</h5>
+                        {% if user.is_admin %}
+                            <p>As an <strong>Administrator</strong>, you can:</p>
+                            <ul>
+                                <li>Create, edit, and delete announcements for any course</li>
+                                <li>View all announcements in the system</li>
+                            </ul>
+                        {% elif user.is_teacher %}
+                            <p>As a <strong>Teacher</strong>, you can:</p>
+                            <ul>
+                                <li>Create, edit, and delete announcements for courses you teach</li>
+                                <li>View announcements for your courses</li>
+                            </ul>
+                        {% else %}
+                            <p>As a <strong>Student</strong>, you can:</p>
+                            <ul>
+                                <li>View announcements for courses you're enrolled in</li>
+                            </ul>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <h5>Kanban Boards</h5>
+                        {% if user.is_admin %}
+                            <p>As an <strong>Administrator</strong>, you can:</p>
+                            <ul>
+                                <li>Create, edit, and delete any Kanban board</li>
+                                <li>Manage columns and cards on any board</li>
+                                <li>Assign tasks to any user</li>
+                            </ul>
+                        {% elif user.is_teacher %}
+                            <p>As a <strong>Teacher</strong>, you can:</p>
+                            <ul>
+                                <li>Create Kanban boards for your courses</li>
+                                <li>Manage columns and cards on your boards</li>
+                                <li>Assign tasks to students in your courses</li>
+                            </ul>
+                        {% else %}
+                            <p>As a <strong>Student</strong>, you can:</p>
+                            <ul>
+                                <li>View Kanban boards for your courses</li>
+                                <li>Create personal Kanban boards</li>
+                                <li>Move your assigned cards between columns</li>
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if user.is_admin %}
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">Admin-Only Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action">Manage User Accounts</a>
+                        <a href="#" class="list-group-item list-group-item-action">System Configuration</a>
+                        <a href="#" class="list-group-item list-group-item-action">View System Logs</a>
+                        <a href="#" class="list-group-item list-group-item-action">Database Backup & Restore</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if user.is_teacher %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Teacher-Only Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action">Create Course Content</a>
+                        <a href="#" class="list-group-item list-group-item-action">Manage Assignments</a>
+                        <a href="#" class="list-group-item list-group-item-action">Grade Student Work</a>
+                        <a href="#" class="list-group-item list-group-item-action">Generate Course Reports</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if user.is_student %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">Student-Only Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="#" class="list-group-item list-group-item-action">Submit Assignments</a>
+                        <a href="#" class="list-group-item list-group-item-action">View Grades</a>
+                        <a href="#" class="list-group-item list-group-item-action">Course Registration</a>
+                        <a href="#" class="list-group-item list-group-item-action">Request Academic Support</a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

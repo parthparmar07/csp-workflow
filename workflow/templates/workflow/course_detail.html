@@ -1,0 +1,157 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}{{ course.name }} - University Workflow Manager{% endblock %}
+{% block courses_active %}active{% endblock %}
+{% block content_title %}{{ course.name }} ({{ course.code }}){% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <a href="{% url 'courses' %}" class="channel-item d-inline-flex align-items-center mb-0 py-1 px-2">
+                    <i class="bi bi-arrow-left me-2"></i> Back to Courses
+                </a>
+            </div>
+            {% if is_teacher or is_admin %}
+            <div class="dropdown">
+                <button class="btn btn-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-gear-fill me-1"></i> Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end bg-dark border border-secondary">
+                    <li>
+                        <a class="dropdown-item text-light" href="{% url 'edit_course' course.id %}">
+                            <i class="bi bi-pencil-square me-2"></i> Edit Course
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item text-light" href="{% url 'course_students' course.id %}">
+                            <i class="bi bi-people-fill me-2"></i> Manage Students
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider bg-secondary"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="{% url 'delete_course' course.id %}">
+                            <i class="bi bi-trash-fill me-2"></i> Delete Course
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Course Information -->
+    <div class="col-md-8">
+        <!-- Course Description -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Course Information</h5>
+            </div>
+            <div class="discord-card-body">
+                <h6 class="text-accent mb-2">Description</h6>
+                <p>{{ course.description|default:"No description provided." }}</p>
+            </div>
+        </div>
+        
+        <!-- Teacher Information -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Teacher</h5>
+            </div>
+            <div class="discord-card-body">
+                <div class="d-flex align-items-center">
+                    <div class="d-flex justify-content-center align-items-center me-3" 
+                         style="width: 48px; height: 48px; background-color: var(--discord-accent); border-radius: 50%; color: white;">
+                        {{ course.teacher.get_initials }}
+                    </div>
+                    <div>
+                        <h6 class="mb-0 text-light">{{ course.teacher.get_full_name|default:course.teacher.username }}</h6>
+                        <small class="text-muted">{{ course.teacher.email }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Announcements -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Recent Announcements</h5>
+                <a href="#" class="btn btn-dark btn-sm">View All</a>
+            </div>
+            <div class="discord-card-body">
+                {% if announcements %}
+                    {% for announcement in announcements %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="text-accent mb-1">{{ announcement.title }}</h6>
+                                <small class="text-muted">{{ announcement.created_at|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-1">{{ announcement.content|truncatewords:20 }}</p>
+                            <small class="text-muted">By {{ announcement.author.get_full_name|default:announcement.author.username }}</small>
+                            {% if not forloop.last %}<div class="divider mt-3"></div>{% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No announcements yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-md-4">
+        <!-- Students Count -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Students</h5>
+            </div>
+            <div class="discord-card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="mb-0 text-accent">{{ enrolled_students_count }}</h3>
+                    {% if is_teacher or is_admin %}
+                        <a href="{% url 'course_students' course.id %}" class="btn btn-dark btn-sm">
+                            <i class="bi bi-people-fill me-1"></i> Manage
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upcoming Events -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Upcoming Events</h5>
+            </div>
+            <div class="discord-card-body">
+                {% if upcoming_events %}
+                    {% for event in upcoming_events %}
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <div class="text-center px-2 py-1" style="background-color: rgba(0,0,0,0.2); border-radius: 5px;">
+                                        <span class="d-block fw-bold fs-5 text-accent">{{ event.start_date|date:"d" }}</span>
+                                        <small class="text-uppercase text-muted">{{ event.start_date|date:"M" }}</small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 text-light">{{ event.title }}</h6>
+                                    <small class="text-muted">
+                                        {{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A" }}
+                                    </small>
+                                </div>
+                            </div>
+                            {% if not forloop.last %}<div class="divider mt-3"></div>{% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No upcoming events.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

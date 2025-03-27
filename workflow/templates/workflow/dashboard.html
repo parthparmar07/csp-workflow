@@ -1,0 +1,118 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Dashboard - University Workflow Manager{% endblock %}
+{% block dashboard_active %}active{% endblock %}
+{% block content_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <!-- Main content area -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Welcome, {{ user.get_full_name|default:user.username }}</h5>
+            </div>
+            <div class="discord-card-body">
+                {% if user.is_admin %}
+                    <!-- Admin dashboard content -->
+                    <p>As an administrator, you have access to all system features and data.</p>
+                    <div class="list-group mb-3">
+                        <a href="{% url 'user_management' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-people me-2"></i> User Management</div>
+                            <span class="badge bg-primary rounded-pill">{{ user_count }}</span>
+                        </a>
+                        <a href="{% url 'manage_courses' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-book me-2"></i> All Courses</div>
+                            <span class="badge bg-primary rounded-pill">{{ course_count }}</span>
+                        </a>
+                        <a href="{% url 'admin:index' %}" class="channel-item">
+                            <i class="bi bi-shield-lock me-2"></i> Admin Panel
+                        </a>
+                    </div>
+                {% elif user.is_teacher %}
+                    <!-- Teacher dashboard content -->
+                    <p>View and manage your courses, assignments, and student activities.</p>
+                    <div class="list-group mb-3">
+                        <a href="{% url 'manage_courses' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-pencil-square me-2"></i> My Courses</div>
+                            <span class="badge bg-primary rounded-pill">{{ teaching_course_count }}</span>
+                        </a>
+                        <a href="{% url 'announcements' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-megaphone me-2"></i> Announcements</div>
+                            <span class="badge bg-primary rounded-pill">{{ announcement_count }}</span>
+                        </a>
+                        <a href="{% url 'reports' %}" class="channel-item">
+                            <i class="bi bi-file-earmark-bar-graph me-2"></i> Generate Reports
+                        </a>
+                    </div>
+                {% else %}
+                    <!-- Student dashboard content -->
+                    <p>Access your courses, assignments, and announcements.</p>
+                    <div class="list-group mb-3">
+                        <a href="{% url 'courses' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-book me-2"></i> My Courses</div>
+                            <span class="badge bg-primary rounded-pill">{{ enrolled_course_count }}</span>
+                        </a>
+                        <a href="{% url 'calendar' %}" class="channel-item">
+                            <i class="bi bi-calendar me-2"></i> Calendar & Due Dates
+                        </a>
+                        <a href="{% url 'announcements' %}" class="channel-item d-flex justify-content-between align-items-center">
+                            <div><i class="bi bi-megaphone me-2"></i> Announcements</div>
+                            <span class="badge bg-info rounded-pill">{{ announcement_count }}</span>
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Sidebar widgets -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Recent Announcements</h5>
+            </div>
+            <div class="discord-card-body">
+                {% if recent_announcements %}
+                    {% for announcement in recent_announcements %}
+                        <div class="mb-3">
+                            <h6 class="mb-1 text-accent">{{ announcement.title }}</h6>
+                            <p class="small text-muted mb-1">
+                                {{ announcement.course.name }} | {{ announcement.created_at|date:"M d, Y" }}
+                            </p>
+                            <p class="mb-0">{{ announcement.content|truncatewords:15 }}</p>
+                            <a href="{% url 'announcement_detail' announcement.id %}" class="small text-accent">Read more</a>
+                        </div>
+                        {% if not forloop.last %}<div class="divider"></div>{% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No recent announcements.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Upcoming Events</h5>
+            </div>
+            <div class="discord-card-body">
+                {% if upcoming_events %}
+                    {% for event in upcoming_events %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <h6 class="mb-0 text-accent">{{ event.title }}</h6>
+                                <span class="badge bg-dark text-light">{{ event.start_date|date:"M d" }}</span>
+                            </div>
+                            <p class="small text-muted mb-0">{{ event.course.name }}</p>
+                        </div>
+                        {% if not forloop.last %}<div class="divider"></div>{% endif %}
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted mb-0">No upcoming events.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

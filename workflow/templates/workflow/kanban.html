@@ -1,0 +1,324 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Kanban Boards - University Workflow Manager{% endblock %}
+{% block kanban_active %}active{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Kanban Boards</h1>
+        <div>
+            <button class="btn btn-outline-secondary me-2" data-bs-toggle="modal" data-bs-target="#boardSelectModal">
+                <i class="bi bi-grid"></i> Switch Board
+            </button>
+            {% if user.is_teacher or user.is_admin %}
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createBoardModal">
+                <i class="bi bi-plus-circle"></i> New Board
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div id="kanban-container">
+        <div class="mb-4">
+            <h4 id="current-board-name">Course Project Tasks</h4>
+            <p class="text-muted" id="current-board-description">Track progress on your course project tasks</p>
+        </div>
+        
+        <div class="row flex-nowrap overflow-auto pb-3">
+            <!-- Kanban columns would be dynamically generated here -->
+            <div class="col-md-3">
+                <div class="card mb-4 bg-light h-100">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">To Do</h5>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCardModal" data-column="todo">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="kanban-cards" id="todo-cards">
+                            <!-- Cards would be dynamically generated -->
+                            <div class="card mb-2 shadow-sm cursor-grab" draggable="true">
+                                <div class="card-body">
+                                    <h6 class="card-title">Research Requirements</h6>
+                                    <p class="card-text small">Gather requirements for the project</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-info">Research</span>
+                                        <small class="text-muted">Due: Apr 5</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-2 shadow-sm cursor-grab" draggable="true">
+                                <div class="card-body">
+                                    <h6 class="card-title">Create Wireframes</h6>
+                                    <p class="card-text small">Design basic wireframes for the UI</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-warning">Design</span>
+                                        <small class="text-muted">Due: Apr 8</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card mb-4 bg-light h-100">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">In Progress</h5>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCardModal" data-column="in-progress">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="kanban-cards" id="in-progress-cards">
+                            <div class="card mb-2 shadow-sm cursor-grab" draggable="true">
+                                <div class="card-body">
+                                    <h6 class="card-title">Setup Development Environment</h6>
+                                    <p class="card-text small">Install and configure all necessary tools</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-secondary">Setup</span>
+                                        <small class="text-muted">Due: Apr 2</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card mb-4 bg-light h-100">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Review</h5>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCardModal" data-column="review">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="kanban-cards" id="review-cards">
+                            <!-- No cards here yet -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card mb-4 bg-light h-100">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Done</h5>
+                            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addCardModal" data-column="done">
+                                <i class="bi bi-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="kanban-cards" id="done-cards">
+                            <div class="card mb-2 shadow-sm cursor-grab" draggable="true">
+                                <div class="card-body">
+                                    <h6 class="card-title">Project Planning</h6>
+                                    <p class="card-text small">Define project scope and timeline</p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-success">Planning</span>
+                                        <small class="text-muted">Due: Mar 30</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Board Selection Modal -->
+<div class="modal fade" id="boardSelectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Select Kanban Board</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="list-group">
+                    <a href="#" class="list-group-item list-group-item-action active">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Course Project Tasks</h5>
+                            <small>Software Engineering (CS401)</small>
+                        </div>
+                        <p class="mb-1">Track progress on your course project tasks</p>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Study Plan</h5>
+                            <small>Personal</small>
+                        </div>
+                        <p class="mb-1">Organize study tasks for upcoming midterms</p>
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">Research Paper</h5>
+                            <small>Advanced Data Structures (CS301)</small>
+                        </div>
+                        <p class="mb-1">Track progress on research paper assignment</p>
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Board Modal -->
+<div class="modal fade" id="createBoardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Kanban Board</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="boardName" class="form-label">Board Name</label>
+                        <input type="text" class="form-control" id="boardName">
+                    </div>
+                    <div class="mb-3">
+                        <label for="boardCourse" class="form-label">Associated Course (optional)</label>
+                        <select class="form-select" id="boardCourse">
+                            <option value="" selected>None (Personal Board)</option>
+                            <!-- Course options would be dynamically populated -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="boardDescription" class="form-label">Description (optional)</label>
+                        <textarea class="form-control" id="boardDescription" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Columns</label>
+                        <div id="columnContainer">
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control me-2" value="To Do" readonly>
+                                <button type="button" class="btn btn-outline-secondary" disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control me-2" value="In Progress" readonly>
+                                <button type="button" class="btn btn-outline-secondary" disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control me-2" value="Review" readonly>
+                                <button type="button" class="btn btn-outline-secondary" disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control me-2" value="Done" readonly>
+                                <button type="button" class="btn btn-outline-secondary" disabled>
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control me-2" placeholder="New Column Name">
+                                <button type="button" class="btn btn-outline-primary">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Create Board</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Card Modal -->
+<div class="modal fade" id="addCardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Card</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <input type="hidden" id="columnId" value="">
+                    <div class="mb-3">
+                        <label for="cardTitle" class="form-label">Card Title</label>
+                        <input type="text" class="form-control" id="cardTitle">
+                    </div>
+                    <div class="mb-3">
+                        <label for="cardDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="cardDescription" rows="3"></textarea>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label for="cardLabel" class="form-label">Label</label>
+                            <select class="form-select" id="cardLabel">
+                                <option value="none">None</option>
+                                <option value="research">Research</option>
+                                <option value="design">Design</option>
+                                <option value="development">Development</option>
+                                <option value="testing">Testing</option>
+                                <option value="planning">Planning</option>
+                                <option value="setup">Setup</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label for="cardDueDate" class="form-label">Due Date (optional)</label>
+                            <input type="date" class="form-control" id="cardDueDate">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cardAssignee" class="form-label">Assignee (optional)</label>
+                        <select class="form-select" id="cardAssignee">
+                            <option value="" selected>Unassigned</option>
+                            <!-- User options would be dynamically populated -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">Add Card</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .cursor-grab {
+        cursor: grab;
+    }
+    .kanban-cards {
+        min-height: 50px;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // This would be replaced with actual JavaScript functionality
+        // for drag and drop, card creation, etc.
+        console.log('Kanban board loaded');
+    });
+</script>
+{% endblock %}

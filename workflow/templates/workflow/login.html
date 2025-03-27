@@ -1,0 +1,30 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Login - University Workflow Manager{% endblock %}
+{% block content_title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="discord-card">
+            <div class="discord-card-header">
+                <h5 class="mb-0 text-white">Welcome Back</h5>
+            </div>
+            <div class="discord-card-body">
+                <p class="text-white mb-4">We're excited to see you again!</p>
+                <form method="post">
+                    {% csrf_token %}
+                    {% bootstrap_form form %}
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                    <div class="text-center mt-3">
+                        <p class="text-white small">Need an account? <a href="{% url 'register' %}" class="text-white">Register</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}My Profile - University Workflow Manager{% endblock %}
+{% block content_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <!-- Profile Information Card -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Profile Information</h5>
+            </div>
+            <div class="discord-card-body text-center">
+                {% if user.profile_image %}
+                <div class="mb-4">
+                    <img src="{{ user.profile_image.url }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+                </div>
+                {% else %}
+                <div class="mb-4">
+                    <div class="bg-accent rounded-circle d-inline-flex justify-content-center align-items-center" style="width: 120px; height: 120px;">
+                        <span class="display-5 text-dark">{{ user.get_initials }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <h4 class="text-accent">{{ user.get_full_name }}</h4>
+                <div class="badge bg-primary mb-3">
+                    {% if user.is_admin %}Administrator
+                    {% elif user.is_teacher %}Teacher
+                    {% else %}Student
+                    {% endif %}
+                </div>
+                
+                <div class="d-flex flex-column align-items-start text-start mb-4">
+                    <div class="mb-2">
+                        <strong class="text-light">Username:</strong> <span class="text-muted">{{ user.username }}</span>
+                    </div>
+                    <div class="mb-2">
+                        <strong class="text-light">Email:</strong> <span class="text-muted">{{ user.email }}</span>
+                    </div>
+                </div>
+                
+                <a href="#" class="btn btn-dark">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Account Settings Card -->
+        <div class="discord-card mb-4">
+            <div class="discord-card-header">
+                <h5 class="mb-0">Account Settings</h5>
+            </div>
+            <div class="discord-card-body">
+                <!-- Change Password Section -->
+                <form method="post" action="#">
+                    {% csrf_token %}
+                    <h5 class="text-accent mb-2">Change Password</h5>
+                    <p class="text-muted small mb-3">It's a good idea to use a strong password that you don't use elsewhere</p>
+                    
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label text-light">Current Password</label>
+                        <input type="password" class="form-control bg-dark text-light border-secondary" id="current_password" name="current_password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label text-light">New Password</label>
+                        <input type="password" class="form-control bg-dark text-light border-secondary" id="new_password" name="new_password">
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label text-light">Confirm New Password</label>
+                        <input type="password" class="form-control bg-dark text-light border-secondary" id="confirm_password" name="confirm_password">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                </form>
+                
+                <div class="divider my-4"></div>
+                
+                <!-- Notification Preferences Section -->
+                <h5 class="text-accent mb-3">Notification Preferences</h5>
+                <form method="post" action="#">
+                    {% csrf_token %}
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="email_announcements" checked>
+                        <label class="form-check-label" for="email_announcements">
+                            Email me about new announcements
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="email_assignments" checked>
+                        <label class="form-check-label" for="email_assignments">
+                            Email me about new assignments
+                        </label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="email_events" checked>
+                        <label class="form-check-label" for="email_events">
+                            Email me about calendar events
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Save Preferences</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

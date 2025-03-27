@@ -1,0 +1,44 @@
+{% extends 'workflow/base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}Delete Course - {{ course.name }} - University Workflow Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+            <h4 class="card-title mb-0">Delete Course</h4>
+            <a href="{% url 'course_detail' course.id %}" class="btn btn-light btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Course
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Warning:</strong> This action cannot be undone. All data related to this course will be permanently deleted.
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">{{ course.name }} ({{ course.code }})</h5>
+                    <p class="card-text">
+                        <strong>Teacher:</strong> {{ course.teacher.get_full_name|default:course.teacher.username }}<br>
+                        <strong>Students:</strong> {{ course.students.count }}
+                    </p>
+                    <p class="card-text">{{ course.description|default:"No description provided." }}</p>
+                </div>
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash-fill me-2"></i> Permanently Delete Course
+                    </button>
+                    <a href="{% url 'course_detail' course.id %}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
