@@ -1,62 +1,66 @@
 {% extends 'workflow/base.html' %}
-{% load django_bootstrap5 %}
-
 {% block title %}Courses - University Workflow Manager{% endblock %}
 {% block courses_active %}active{% endblock %}
-{% block content_title %}Courses{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
-        {% if user.is_staff %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Courses</h2>
+        {% if user.is_teacher or user.is_admin %}
         <a href="{% url 'create_course' %}" class="btn btn-primary">
-            <i class="fas fa-plus-circle me-1"></i> Create New Course
+            <i class="fas fa-plus-circle me-2"></i>Create Course
         </a>
         {% endif %}
     </div>
-</div>
 
-{% if courses %}
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-    {% for course in courses %}
-    <div class="col">
-        <div class="discord-card h-100">
-            <div class="discord-card-header d-flex align-items-center">
-                {% if course.image %}
-                <div class="course-image-container me-3">
-                    <img src="{{ course.image.url }}" class="rounded-circle" alt="{{ course.name }}" width="48" height="48">
+    <div class="row">
+        {% if courses %}
+            {% for course in courses %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">{{ course.code }}: {{ course.name }}</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">{{ course.description|truncatechars:150 }}</p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-user-tie me-1"></i> 
+                                    {{ course.teacher.get_full_name|default:course.teacher.username }}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-white d-flex justify-content-between">
+                            <a href="{% url 'course_detail' pk=course.id %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-info-circle me-1"></i> Details
+                            </a>
+                            {% if user.is_teacher and course.teacher == user or user.is_admin %}
+                                <div class="btn-group">
+                                    <a href="{% url 'edit_course' pk=course.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <a href="{% url 'course_students' pk=course.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-users"></i> Students
+                                    </a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                {% else %}
-                <div class="course-icon-container me-3 bg-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
-                    <i class="bi bi-book text-light"></i>
-                </div>
-                {% endif %}
-                <div>
-                    <h5 class="mb-0 text-accent">{{ course.name }}</h5>
-                    <div class="small text-muted">{{ course.code }}</div>
-                </div>
-            </div>
-            <div class="discord-card-body">
-                <p>{{ course.description|truncatewords:20 }}</p>
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                    <span class="badge bg-accent rounded-pill">{{ course.get_semester_display }}</span>
-                    <a href="{% url 'course_detail' course.id %}" class="btn btn-dark">View Course</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="discord-card">
-    <div class="discord-card-body text-center py-5">
-        {% if user.is_teacher %}
-        <p class="mb-4">You are not teaching any courses yet.</p>
-        <a href="{% url 'create_course' %}" class="btn btn-primary">Create Your First Course</a>
+            {% endfor %}
         {% else %}
-        <p>You are not enrolled in any courses yet.</p>
+            <div class="col">
+                <div class="alert alert-info">
+                    {% if user.is_student %}
+                        <p>You are not enrolled in any courses yet.</p>
+                    {% elif user.is_teacher %}
+                        <p>You are not teaching any courses yet. <a href="{% url 'create_course' %}">Create a new course</a>.</p>
+                    {% else %}
+                        <p>No courses available. <a href="{% url 'create_course' %}">Create a new course</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
         {% endif %}
     </div>
 </div>
-{% endif %}
 {% endblock %}

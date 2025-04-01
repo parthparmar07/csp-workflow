@@ -1,28 +1,64 @@
 {% extends 'workflow/base.html' %}
-{% load django_bootstrap5 %}
+{% load static %}
 
 {% block title %}Login - University Workflow Manager{% endblock %}
-{% block content_title %}Login{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
-        <div class="discord-card">
-            <div class="discord-card-header">
-                <h5 class="mb-0 text-white">Welcome Back</h5>
-            </div>
-            <div class="discord-card-body">
-                <p class="text-white mb-4">We're excited to see you again!</p>
-                <form method="post">
-                    {% csrf_token %}
-                    {% bootstrap_form form %}
-                    <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn btn-primary">Login</button>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Login</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">Username</label>
+                            <input type="text" name="username" class="form-control" id="id_username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="id_password" class="form-label">Password</label>
+                            <input type="password" name="password" class="form-control" id="id_password" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Log In</button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p>Demo Accounts:</p>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card mb-2">
+                                    <div class="card-body p-2 text-center">
+                                        <span class="badge bg-danger mb-2">Admin</span>
+                                        <p class="mb-0"><small>Username: admin<br>Password: admin1234</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card mb-2">
+                                    <div class="card-body p-2 text-center">
+                                        <span class="badge bg-info mb-2">Teacher</span>
+                                        <p class="mb-0"><small>Username: teacher1<br>Password: teacher1234</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card mb-2">
+                                    <div class="card-body p-2 text-center">
+                                        <span class="badge bg-success mb-2">Student</span>
+                                        <p class="mb-0"><small>Username: student1<br>Password: student1234</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="text-center mt-3">
-                        <p class="text-white small">Need an account? <a href="{% url 'register' %}" class="text-white">Register</a></p>
-                    </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'corsheaders',  # Add CORS headers support
+    'django_bootstrap5',  # Add Bootstrap 5 support
     
     # Local apps
     'workflow',

@@ -2,109 +2,293 @@
 {% load django_bootstrap5 %}
 
 {% block title %}My Profile - University Workflow Manager{% endblock %}
-{% block content_title %}My Profile{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <!-- Profile Information Card -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Profile Information</h5>
-            </div>
-            <div class="discord-card-body text-center">
-                {% if user.profile_image %}
-                <div class="mb-4">
-                    <img src="{{ user.profile_image.url }}" class="rounded-circle" style="width: 120px; height: 120px; object-fit: cover;">
+<div class="container py-4">
+    <h2 class="mb-4">My Profile</h2>
+    
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-md-4 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Profile Information</h5>
                 </div>
-                {% else %}
-                <div class="mb-4">
-                    <div class="bg-accent rounded-circle d-inline-flex justify-content-center align-items-center" style="width: 120px; height: 120px;">
-                        <span class="display-5 text-dark">{{ user.get_initials }}</span>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        {% if user.profile_picture %}
+                            <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}" class="rounded-circle img-fluid mb-3" style="max-width: 150px;">
+                        {% else %}
+                            <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 150px; height: 150px;">
+                                <i class="fas fa-user fa-5x text-secondary"></i>
+                            </div>
+                        {% endif %}
+                        <h4>{{ user.get_full_name|default:user.username }}</h4>
+                        {% if user.is_admin %}
+                            <span class="badge bg-danger mb-2">Administrator</span>
+                        {% elif user.is_teacher %}
+                            <span class="badge bg-primary mb-2">Teacher</span>
+                        {% else %}
+                            <span class="badge bg-success mb-2">Student</span>
+                        {% endif %}
+                    </div>
+                    
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Username:</span>
+                            <span class="fw-bold">{{ user.username }}</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Email:</span>
+                            <span class="fw-bold">{{ user.email }}</span>
+                        </li>
+                        {% if user.department %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Department:</span>
+                            <span class="fw-bold">{{ user.department }}</span>
+                        </li>
+                        {% endif %}
+                        {% if user.date_joined %}
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span class="text-muted">Joined:</span>
+                            <span class="fw-bold">{{ user.date_joined|date:"M d, Y" }}</span>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                            <i class="fas fa-edit me-2"></i>Edit Profile
+                        </button>
+                        <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </button>
                     </div>
                 </div>
-                {% endif %}
-                
-                <h4 class="text-accent">{{ user.get_full_name }}</h4>
-                <div class="badge bg-primary mb-3">
-                    {% if user.is_admin %}Administrator
-                    {% elif user.is_teacher %}Teacher
-                    {% else %}Student
+            </div>
+        </div>
+        
+        <!-- Role-Specific Information -->
+        <div class="col-md-8">
+            {% if user.is_teacher or user.is_admin %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        {% if user.is_teacher %}My Courses{% else %}Managed Courses{% endif %}
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>Students</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if teacher_courses %}
+                                    {% for course in teacher_courses %}
+                                        <tr>
+                                            <td>{{ course.code }}</td>
+                                            <td>{{ course.name }}</td>
+                                            <td>{{ course.student_count|default:"0" }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <a href="{% url 'course_detail' pk=course.id %}" class="btn btn-outline-primary">View</a>
+                                                    <a href="{% url 'edit_course' pk=course.id %}" class="btn btn-outline-secondary">Edit</a>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            {% if user.is_teacher %}
+                                                You are not teaching any courses.
+                                            {% else %}
+                                                No courses found.
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer text-end">
+                    <a href="{% url 'create_course' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus-circle me-1"></i> Create Course
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if user.is_student %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">My Enrollments</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Name</th>
+                                    <th>Teacher</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if student_courses %}
+                                    {% for course in student_courses %}
+                                        <tr>
+                                            <td>{{ course.code }}</td>
+                                            <td>{{ course.name }}</td>
+                                            <td>{{ course.teacher.get_full_name|default:course.teacher.username }}</td>
+                                            <td>
+                                                <a href="{% url 'course_detail' pk=course.id %}" class="btn btn-outline-primary btn-sm">View</a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">You are not enrolled in any courses.</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Upcoming Events -->
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Upcoming Events</h5>
+                </div>
+                <div class="card-body">
+                    {% if upcoming_events %}
+                        {% for event in upcoming_events %}
+                            <div class="card mb-2
+                                {% if event.event_type == 'CLASS' %}border-primary{% endif %}
+                                {% if event.event_type == 'ASSIGNMENT' %}border-success{% endif %}
+                                {% if event.event_type == 'EXAM' %}border-danger{% endif %}">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="card-title mb-0">{{ event.title }}</h6>
+                                        <span class="badge 
+                                            {% if event.event_type == 'CLASS' %}bg-primary{% endif %}
+                                            {% if event.event_type == 'ASSIGNMENT' %}bg-success{% endif %}
+                                            {% if event.event_type == 'EXAM' %}bg-danger{% endif %}
+                                            {% if event.event_type == 'OTHER' %}bg-secondary{% endif %}">
+                                            {{ event.get_event_type_display }}
+                                        </span>
+                                    </div>
+                                    {% if event.course %}
+                                        <p class="card-text"><small class="text-muted">{{ event.course.code }}</small></p>
+                                    {% endif %}
+                                    <p class="card-text">
+                                        <i class="fas fa-calendar-day"></i>
+                                        {{ event.start_date|date:"M d, Y" }} at {{ event.start_date|date:"g:i A" }}
+                                    </p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No upcoming events.</p>
                     {% endif %}
                 </div>
-                
-                <div class="d-flex flex-column align-items-start text-start mb-4">
-                    <div class="mb-2">
-                        <strong class="text-light">Username:</strong> <span class="text-muted">{{ user.username }}</span>
-                    </div>
-                    <div class="mb-2">
-                        <strong class="text-light">Email:</strong> <span class="text-muted">{{ user.email }}</span>
-                    </div>
-                </div>
-                
-                <a href="#" class="btn btn-dark">
-                    <i class="bi bi-pencil-square me-1"></i> Edit Profile
-                </a>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-8">
-        <!-- Account Settings Card -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Account Settings</h5>
+</div>
+
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="discord-card-body">
-                <!-- Change Password Section -->
-                <form method="post" action="#">
+            <div class="modal-body">
+                <form id="profileForm" action="{% url 'profile' %}" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
-                    <h5 class="text-accent mb-2">Change Password</h5>
-                    <p class="text-muted small mb-3">It's a good idea to use a strong password that you don't use elsewhere</p>
-                    
-                    <div class="mb-3">
-                        <label for="current_password" class="form-label text-light">Current Password</label>
-                        <input type="password" class="form-control bg-dark text-light border-secondary" id="current_password" name="current_password">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" value="{{ user.first_name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" value="{{ user.last_name }}">
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label for="new_password" class="form-label text-light">New Password</label>
-                        <input type="password" class="form-control bg-dark text-light border-secondary" id="new_password" name="new_password">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}">
                     </div>
+                    {% if user.is_teacher %}
                     <div class="mb-3">
-                        <label for="confirm_password" class="form-label text-light">Confirm New Password</label>
-                        <input type="password" class="form-control bg-dark text-light border-secondary" id="confirm_password" name="confirm_password">
+                        <label for="department" class="form-label">Department</label>
+                        <select class="form-select" id="department" name="department">
+                            <option value="">None</option>
+                            <option value="Computer Science" {% if user.department == 'Computer Science' %}selected{% endif %}>Computer Science</option>
+                            <option value="Mathematics" {% if user.department == 'Mathematics' %}selected{% endif %}>Mathematics</option>
+                            <option value="Physics" {% if user.department == 'Physics' %}selected{% endif %}>Physics</option>
+                            <option value="Biology" {% if user.department == 'Biology' %}selected{% endif %}>Biology</option>
+                        </select>
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary">Update Password</button>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label for="profile_picture" class="form-label">Profile Picture</label>
+                        <input type="file" class="form-control" id="profile_picture" name="profile_picture">
+                        <div class="form-text">Leave empty to keep current picture</div>
+                    </div>
                 </form>
-                
-                <div class="divider my-4"></div>
-                
-                <!-- Notification Preferences Section -->
-                <h5 class="text-accent mb-3">Notification Preferences</h5>
-                <form method="post" action="#">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="profileForm" class="btn btn-primary">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="changePasswordModalLabel">Change Password</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="passwordForm" action="{% url 'profile' %}" method="post">
                     {% csrf_token %}
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="email_announcements" checked>
-                        <label class="form-check-label" for="email_announcements">
-                            Email me about new announcements
-                        </label>
+                    <input type="hidden" name="action" value="change_password">
+                    <div class="mb-3">
+                        <label for="current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="current_password" name="current_password" required>
                     </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="email_assignments" checked>
-                        <label class="form-check-label" for="email_assignments">
-                            Email me about new assignments
-                        </label>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
                     </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="email_events" checked>
-                        <label class="form-check-label" for="email_events">
-                            Email me about calendar events
-                        </label>
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary">Save Preferences</button>
                 </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="passwordForm" class="btn btn-primary">Change Password</button>
             </div>
         </div>
     </div>

@@ -1,155 +1,165 @@
 {% extends 'workflow/base.html' %}
-{% load django_bootstrap5 %}
-
-{% block title %}{{ course.name }} - University Workflow Manager{% endblock %}
+{% block title %}{{ course.code }}: {{ course.name }} - University Workflow Manager{% endblock %}
 {% block courses_active %}active{% endblock %}
-{% block content_title %}{{ course.name }} ({{ course.code }}){% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <a href="{% url 'courses' %}" class="channel-item d-inline-flex align-items-center mb-0 py-1 px-2">
-                    <i class="bi bi-arrow-left me-2"></i> Back to Courses
-                </a>
-            </div>
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'courses' %}">Courses</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ course.code }}</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>{{ course.name }}</h2>
+            <h5 class="text-muted">{{ course.code }}</h5>
+        </div>
+        <div class="col-md-4 text-end">
             {% if is_teacher or is_admin %}
-            <div class="dropdown">
-                <button class="btn btn-dark btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-gear-fill me-1"></i> Actions
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end bg-dark border border-secondary">
-                    <li>
-                        <a class="dropdown-item text-light" href="{% url 'edit_course' course.id %}">
-                            <i class="bi bi-pencil-square me-2"></i> Edit Course
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item text-light" href="{% url 'course_students' course.id %}">
-                            <i class="bi bi-people-fill me-2"></i> Manage Students
-                        </a>
-                    </li>
-                    <li><hr class="dropdown-divider bg-secondary"></li>
-                    <li>
-                        <a class="dropdown-item text-danger" href="{% url 'delete_course' course.id %}">
-                            <i class="bi bi-trash-fill me-2"></i> Delete Course
-                        </a>
-                    </li>
-                </ul>
-            </div>
+                <div class="btn-group">
+                    <a href="{% url 'edit_course' pk=course.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-edit me-1"></i> Edit Course
+                    </a>
+                    <a href="{% url 'course_students' pk=course.id %}" class="btn btn-outline-primary">
+                        <i class="fas fa-users me-1"></i> Manage Students
+                    </a>
+                </div>
             {% endif %}
         </div>
     </div>
-</div>
 
-<div class="row">
-    <!-- Course Information -->
-    <div class="col-md-8">
-        <!-- Course Description -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Course Information</h5>
-            </div>
-            <div class="discord-card-body">
-                <h6 class="text-accent mb-2">Description</h6>
-                <p>{{ course.description|default:"No description provided." }}</p>
-            </div>
-        </div>
-        
-        <!-- Teacher Information -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Teacher</h5>
-            </div>
-            <div class="discord-card-body">
-                <div class="d-flex align-items-center">
-                    <div class="d-flex justify-content-center align-items-center me-3" 
-                         style="width: 48px; height: 48px; background-color: var(--discord-accent); border-radius: 50%; color: white;">
-                        {{ course.teacher.get_initials }}
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Course Information -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Course Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 fw-bold">Teacher:</div>
+                        <div class="col-md-9">{{ course.teacher.get_full_name|default:course.teacher.username }}</div>
                     </div>
-                    <div>
-                        <h6 class="mb-0 text-light">{{ course.teacher.get_full_name|default:course.teacher.username }}</h6>
-                        <small class="text-muted">{{ course.teacher.email }}</small>
+                    <div class="row mt-2">
+                        <div class="col-md-3 fw-bold">Department:</div>
+                        <div class="col-md-9">{{ course.teacher.department|default:"Not specified" }}</div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-md-3 fw-bold">Students:</div>
+                        <div class="col-md-9">{{ enrolled_students_count|default:"0" }}</div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6 class="fw-bold">Description:</h6>
+                            <p>{{ course.description|default:"No description provided." }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Recent Announcements -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Recent Announcements</h5>
-                <a href="#" class="btn btn-dark btn-sm">View All</a>
-            </div>
-            <div class="discord-card-body">
-                {% if announcements %}
-                    {% for announcement in announcements %}
-                        <div class="mb-3">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <h6 class="text-accent mb-1">{{ announcement.title }}</h6>
-                                <small class="text-muted">{{ announcement.created_at|date:"M d, Y" }}</small>
-                            </div>
-                            <p class="mb-1">{{ announcement.content|truncatewords:20 }}</p>
-                            <small class="text-muted">By {{ announcement.author.get_full_name|default:announcement.author.username }}</small>
-                            {% if not forloop.last %}<div class="divider mt-3"></div>{% endif %}
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted mb-0">No announcements yet.</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Sidebar -->
-    <div class="col-md-4">
-        <!-- Students Count -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Students</h5>
-            </div>
-            <div class="discord-card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h3 class="mb-0 text-accent">{{ enrolled_students_count }}</h3>
+
+            <!-- Recent Announcements -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Recent Announcements</h5>
                     {% if is_teacher or is_admin %}
-                        <a href="{% url 'course_students' course.id %}" class="btn btn-dark btn-sm">
-                            <i class="bi bi-people-fill me-1"></i> Manage
-                        </a>
+                    <a href="#" class="btn btn-sm btn-light">
+                        <i class="fas fa-plus"></i> New Announcement
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if announcements %}
+                        {% for announcement in announcements %}
+                            <div class="card mb-3 {% if announcement.important %}border-danger{% endif %}">
+                                <div class="card-body py-2">
+                                    <h6 class="card-title mb-0">
+                                        {{ announcement.title }}
+                                        {% if announcement.important %}<span class="badge bg-danger">Important</span>{% endif %}
+                                    </h6>
+                                    <p class="card-text"><small class="text-muted">
+                                        By: {{ announcement.author.get_full_name|default:announcement.author.username }}
+                                        <br>{{ announcement.created_at|date:"M d, Y" }}
+                                    </small></p>
+                                    <p class="card-text">{{ announcement.content|truncatechars:100 }}</p>
+                                    <a href="{% url 'announcement_detail' pk=announcement.id %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No announcements for this course yet.</p>
                     {% endif %}
                 </div>
             </div>
         </div>
-        
-        <!-- Upcoming Events -->
-        <div class="discord-card mb-4">
-            <div class="discord-card-header">
-                <h5 class="mb-0">Upcoming Events</h5>
-            </div>
-            <div class="discord-card-body">
-                {% if upcoming_events %}
-                    {% for event in upcoming_events %}
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="me-3">
-                                    <div class="text-center px-2 py-1" style="background-color: rgba(0,0,0,0.2); border-radius: 5px;">
-                                        <span class="d-block fw-bold fs-5 text-accent">{{ event.start_date|date:"d" }}</span>
-                                        <small class="text-uppercase text-muted">{{ event.start_date|date:"M" }}</small>
+
+        <div class="col-md-4">
+            <!-- Upcoming Events -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">Upcoming Events</h5>
+                    {% if is_teacher or is_admin %}
+                    <a href="#" class="btn btn-sm btn-light">
+                        <i class="fas fa-plus"></i> Add Event
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if upcoming_events %}
+                        {% for event in upcoming_events %}
+                            <div class="card mb-3
+                                {% if event.event_type == 'CLASS' %}border-primary{% endif %}
+                                {% if event.event_type == 'ASSIGNMENT' %}border-success{% endif %}
+                                {% if event.event_type == 'EXAM' %}border-danger{% endif %}">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="card-title mb-0">{{ event.title }}</h6>
+                                        <span class="badge 
+                                            {% if event.event_type == 'CLASS' %}bg-primary{% endif %}
+                                            {% if event.event_type == 'ASSIGNMENT' %}bg-success{% endif %}
+                                            {% if event.event_type == 'EXAM' %}bg-danger{% endif %}
+                                            {% if event.event_type == 'OTHER' %}bg-secondary{% endif %}">
+                                            {{ event.get_event_type_display }}
+                                        </span>
                                     </div>
-                                </div>
-                                <div>
-                                    <h6 class="mb-0 text-light">{{ event.title }}</h6>
-                                    <small class="text-muted">
-                                        {{ event.start_date|date:"g:i A" }} - {{ event.end_date|date:"g:i A" }}
-                                    </small>
+                                    <p class="card-text mt-2">
+                                        <i class="fas fa-calendar-day"></i>
+                                        {{ event.start_date|date:"M d, Y" }} at {{ event.start_date|date:"g:i A" }}
+                                    </p>
                                 </div>
                             </div>
-                            {% if not forloop.last %}<div class="divider mt-3"></div>{% endif %}
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <p class="text-muted mb-0">No upcoming events.</p>
-                {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No upcoming events for this course.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Course Actions -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Course Actions</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-clipboard-list me-2"></i> View Assignments
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-columns me-2"></i> Kanban Board
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-stream me-2"></i> Timeline
+                    </a>
+                    {% if is_teacher or is_admin %}
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tasks me-2"></i> Workflow
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-bar me-2"></i> Generate Report
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

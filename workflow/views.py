@@ -1,13 +1,17 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import login, logout, authenticate
 from rest_framework import viewsets, status, permissions, filters
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.middleware.csrf import get_token
+import json
+from django.contrib.auth.forms import UserCreationForm
 from .models import (
     User, Course, CalendarEvent, Announcement,
     KanbanBoard, KanbanColumn, KanbanCard,
@@ -23,6 +27,15 @@ from .serializers import (
     WorkflowStepSerializer, WorkflowInstanceSerializer, ReportTemplateSerializer,
     ReportSerializer
 )
+
+# Custom exceptions
+class PermissionDeniedException(Exception):
+    """Exception raised when a user doesn't have permission to perform an action"""
+    pass
+
+class DueDatePassedException(Exception):
+    """Exception raised when attempting to submit an assignment after the due date"""
+    pass
 
 # Custom permissions
 class IsTeacherOrAdmin(permissions.BasePermission):
@@ -511,6 +524,46 @@ from datetime import timedelta
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+# Helper mixins
+class WorkflowViewMixin:
+    """Mixin for consistent workflow error handling"""
+    def handle_error(self, error, redirect_url='dashboard'):
+        """Handle common workflow errors with appropriate messages"""
+        if isinstance(error, PermissionDeniedException):
+            messages.error(self.request, "You don't have permission to perform this action.")
+        elif isinstance(error, InvalidWorkflowStateException):
+            messages.error(self.request, f"Invalid workflow state: {str(error)}")
+        elif isinstance(error, DueDatePassedException):
+            messages.error(self.request, "This action cannot be performed after the due date.")
+        elif isinstance(error, WorkflowException):
+            messages.error(self.request, f"Workflow error: {str(error)}")
+        else:
+            messages.error(self.request, f"An error occurred: {str(error)}")
+        
+        return redirect(redirect_url)
+
+# Role-based access decorators
+from functools import wraps
+from django.shortcuts import redirect
+
+def teacher_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_teacher:
+            messages.error(request, "Teachers only!")
+            return redirect('dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
+def admin_required(view_func):
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_admin:
+            messages.error(request, "Administrators only!")
+            return redirect('dashboard')
+        return view_func(request, *args, **kwargs)
+    return wrapper
+
 # Frontend view functions
 @require_http_methods(["GET", "POST"])
 def login_view(request):
@@ -634,25 +687,46 @@ def courses(request):
     return render(request, 'workflow/courses.html', context)
 
 @login_required
+@teacher_required
 def manage_courses(request):
-    """View for teachers and admins to manage courses"""
-    user = request.user
-    
-    # Only teachers and admins can access this page
-    if not (user.is_teacher or user.is_admin):
-        messages.error(request, "You don't have permission to access this page.")
-        return redirect('dashboard')
-    
-    if user.is_admin:
+    """View for teachers to manage courses"""
+    if request.user.is_admin:
         courses = Course.objects.select_related('teacher').all()
     else:
-        courses = Course.objects.select_related('teacher').filter(teacher=user)
+        courses = Course.objects.select_related('teacher').filter(teacher=request.user)
     
     context = {
         'courses': courses
     }
     
     return render(request, 'workflow/manage_courses.html', context)
+
+@login_required
+@teacher_required
+def reports(request):
+    """Reports view for teachers"""
+    user = request.user
+    
+    # Get report templates and reports the user has access to
+    if user.is_admin:
+        report_templates = ReportTemplate.objects.all()
+        reports = Report.objects.select_related('template', 'course', 'created_by').all()
+    else:
+        # For teachers, show reports for their courses
+        teacher_courses = Course.objects.filter(teacher=user)
+        report_templates = ReportTemplate.objects.filter(
+            created_by=user
+        )
+        reports = Report.objects.select_related('template', 'course', 'created_by').filter(
+            Q(created_by=user) | Q(course__in=teacher_courses)
+        )
+    
+    context = {
+        'report_templates': report_templates,
+        'reports': reports
+    }
+    
+    return render(request, 'workflow/reports.html', context)
 
 @login_required
 def profile(request):
@@ -667,129 +741,222 @@ def calendar(request):
 @login_required
 def announcements(request):
     """Announcements view"""
-    return render(request, 'workflow/announcements.html')
+    user = request.user
+    
+    # Get filter parameters from request
+    course_filter = request.GET.get('course')
+    importance_filter = request.GET.get('importance')
+    date_filter = request.GET.get('date')
+    
+    # Base queryset based on user role
+    if user.is_admin:
+        announcements = Announcement.objects.select_related('course', 'author').all()
+    elif user.is_teacher:
+        teacher_courses = Course.objects.filter(teacher=user)
+        announcements = Announcement.objects.select_related('course', 'author').filter(
+            Q(author=user) | Q(course__in=teacher_courses)
+        )
+    else:
+        student_courses = user.enrolled_courses.all()
+        announcements = Announcement.objects.select_related('course', 'author').filter(
+            course__in=student_courses
+        )
+    
+    # Apply filters to database announcements
+    if course_filter:
+        announcements = announcements.filter(course_id=course_filter)
+    
+    if importance_filter:
+        if importance_filter == 'important':
+            announcements = announcements.filter(important=True)
+        elif importance_filter == 'regular':
+            announcements = announcements.filter(important=False)
+    
+    if date_filter:
+        now = timezone.now()
+        if date_filter == 'today':
+            announcements = announcements.filter(created_at__date=now.date())
+        elif date_filter == 'week':
+            week_start = now - timedelta(days=now.weekday())
+            announcements = announcements.filter(created_at__gte=week_start)
+        elif date_filter == 'month':
+            month_start = now.replace(day=1)
+            announcements = announcements.filter(created_at__gte=month_start)
+    
+    # Get available courses for filter dropdown and store in session for reference
+    if user.is_admin:
+        available_courses = Course.objects.all()
+    elif user.is_teacher:
+        available_courses = Course.objects.filter(teacher=user)
+    else:
+        available_courses = user.enrolled_courses.all()
+    
+    # Store course info in session for reference in create_announcement
+    session_courses = []
+    
+    context = {
+        'announcements': announcements,
+        'available_courses': available_courses,
+    }
+    
+    return render(request, 'workflow/announcements.html', context)
 
 @login_required
 def kanban(request):
-    """Kanban boards view"""
-    return render(request, 'workflow/kanban.html')
+    """Kanban board view"""
+    user = request.user
+    
+    # Get boards based on user role
+    if user.is_admin:
+        boards = KanbanBoard.objects.select_related('course', 'owner').all()
+    elif user.is_teacher:
+        teacher_courses = Course.objects.filter(teacher=user)
+        boards = KanbanBoard.objects.select_related('course', 'owner').filter(
+            Q(owner=user) | Q(course__in=teacher_courses)
+        )
+    else:
+        student_courses = user.enrolled_courses.all()
+        boards = KanbanBoard.objects.select_related('course', 'owner').filter(
+            course__in=student_courses
+        )
+    
+    context = {
+        'boards': boards
+    }
+    
+    return render(request, 'workflow/kanban.html', context)
 
 @login_required
-def reports(request):
-    """Reports view for teachers"""
-    if not (request.user.is_teacher or request.user.is_admin):
-        messages.error(request, "You don't have permission to access this page.")
-        return redirect('dashboard')
-    return render(request, 'workflow/reports.html')
-
-@login_required
+@admin_required
 def user_management(request):
     """User management view for admins"""
-    if not request.user.is_admin:
-        messages.error(request, "You don't have permission to access this page.")
-        return redirect('dashboard')
-    return render(request, 'workflow/user_management.html')
+    users = User.objects.all()
+    
+    context = {
+        'users': users,
+    }
+    
+    return render(request, 'workflow/user_management.html', context)
 
 @login_required
 def role_demo(request):
-    """View to demonstrate role-based UI components"""
+    """Demo page showing different content based on user roles"""
     return render(request, 'workflow/role_demo.html')
 
 @login_required
+def course_detail(request, pk):
+    """Course detail view"""
+    course = get_object_or_404(Course, pk=pk)
+    
+    # Check if user has access to this course
+    user = request.user
+    if not user.is_admin and not (user.is_teacher and course.teacher == user) and course not in user.enrolled_courses.all():
+        messages.error(request, "You don't have access to this course.")
+        return redirect('courses')
+    
+    # Get course-related data
+    announcements = Announcement.objects.filter(course=course).order_by('-created_at')[:5]
+    events = CalendarEvent.objects.filter(course=course).order_by('start_date')[:5]
+    
+    context = {
+        'course': course,
+        'announcements': announcements,
+        'events': events,
+    }
+    
+    return render(request, 'workflow/course_detail.html', context)
+
+@login_required
+@teacher_required
 def create_course(request):
     """View for creating a new course"""
-    # Check if user is a teacher or admin using the role property
-    if not (request.user.is_teacher or request.user.is_admin):
-        messages.error(request, "You don't have permission to create courses.")
-        return redirect('courses')
-        
     if request.method == 'POST':
-        # Process form submission
+        # Process course creation form
         name = request.POST.get('name')
         code = request.POST.get('code')
         description = request.POST.get('description')
         
-        # Basic validation
         if not name or not code:
-            messages.error(request, "Course name and code are required.")
+            messages.error(request, "Name and code are required.")
             return render(request, 'workflow/create_course.html')
-            
-        # Check if course code already exists
-        if Course.objects.filter(code=code).exists():
-            messages.error(request, f"Course code '{code}' already exists. Please use a different code.")
-            return render(request, 'workflow/create_course.html')
-            
-        # Create course
-        try:
-            course = Course.objects.create(
-                name=name,
-                code=code,
-                description=description,
-                teacher=request.user  # Set current user as teacher
-            )
-            messages.success(request, f"Course '{course.name}' created successfully!")
-            return redirect('courses')
-        except Exception as e:
-            messages.error(request, f"Error creating course: {str(e)}")
-            return render(request, 'workflow/create_course.html')
+        
+        # Create the course
+        course = Course.objects.create(
+            name=name,
+            code=code,
+            description=description,
+            teacher=request.user
+        )
+        
+        messages.success(request, f"Course '{course.name}' created successfully!")
+        return redirect('course_detail', pk=course.id)
     
-    # GET request - display the form
     return render(request, 'workflow/create_course.html')
 
 @login_required
+@teacher_required
+def edit_course(request, pk):
+    """View for editing a course"""
+    course = get_object_or_404(Course, pk=pk)
+    
+    # Verify permission
+    if not request.user.is_admin and course.teacher != request.user:
+        messages.error(request, "You don't have permission to edit this course.")
+        return redirect('courses')
+    
+    if request.method == 'POST':
+        # Process course edit form
+        course.name = request.POST.get('name', course.name)
+        course.code = request.POST.get('code', course.code)
+        course.description = request.POST.get('description', course.description)
+        
+        if not course.name or not course.code:
+            messages.error(request, "Name and code are required.")
+        else:
+            course.save()
+            messages.success(request, f"Course '{course.name}' updated successfully!")
+            return redirect('course_detail', pk=course.id)
+    
+    context = {'course': course}
+    return render(request, 'workflow/create_course.html', context)
+
+@login_required
+@teacher_required
 def course_students(request, pk):
     """View for managing students in a course"""
-    # Get the course or return 404
-    course = get_object_or_404(Course.objects.select_related('teacher'), pk=pk)
+    course = get_object_or_404(Course, pk=pk)
     
-    # Check if user has permission to view this course's students
-    if not (request.user.is_admin or (request.user.is_teacher and course.teacher == request.user)):
+    # Verify permission
+    if not request.user.is_admin and course.teacher != request.user:
         messages.error(request, "You don't have permission to manage students for this course.")
         return redirect('courses')
     
-    # Get all students
-    if request.user.is_admin:
-        # Admins can view all students
-        all_students = User.objects.filter(role=User.Role.STUDENT).order_by('last_name', 'first_name')
-    else:
-        # Teachers can only view students in their department
-        all_students = User.objects.filter(
-            role=User.Role.STUDENT, 
-            department=request.user.department
-        ).order_by('last_name', 'first_name')
+    # Get all students and those enrolled in this course
+    enrolled_students = course.students.all()
+    all_students = User.objects.filter(is_student=True)
+    available_students = all_students.exclude(pk__in=enrolled_students.values_list('pk', flat=True))
     
-    # Get enrolled students
-    enrolled_students = course.students.order_by('last_name', 'first_name')
-    
-    # Get available students (not enrolled)
-    available_students = all_students.exclude(id__in=enrolled_students.values_list('id', flat=True))
-    
-    # Handle add/remove student actions
     if request.method == 'POST':
         action = request.POST.get('action')
         student_id = request.POST.get('student_id')
         
-        if student_id and action:
+        if not student_id:
+            messages.error(request, "No student selected.")
+        else:
             try:
-                student = get_object_or_404(User, id=student_id)
+                student = User.objects.get(pk=student_id)
                 
-                if action == 'add':
-                    try:
-                        course.add_student(student)
-                        messages.success(request, f"{student.get_full_name() or student.username} added to {course.name}.")
-                    except Exception as e:
-                        messages.error(request, str(e))
+                if action == 'enroll':
+                    course.add_student(student)
+                    messages.success(request, f"{student.get_full_name() or student.username} enrolled successfully.")
+                elif action == 'unenroll':
+                    course.remove_student(student)
+                    messages.success(request, f"{student.get_full_name() or student.username} unenrolled successfully.")
                 
-                elif action == 'remove':
-                    try:
-                        course.remove_student(student)
-                        messages.success(request, f"{student.get_full_name() or student.username} removed from {course.name}.")
-                    except Exception as e:
-                        messages.error(request, str(e))
             except User.DoesNotExist:
                 messages.error(request, "Student not found.")
-                    
-            return redirect('course_students', pk=pk)
+            except Exception as e:
+                messages.error(request, f"Error: {str(e)}")
     
     context = {
         'course': course,
@@ -800,242 +967,208 @@ def course_students(request, pk):
     return render(request, 'workflow/course_students.html', context)
 
 @login_required
-def course_detail(request, pk):
-    """View for course details"""
-    course = get_object_or_404(Course.objects.select_related('teacher'), pk=pk)
-    
-    # Check if the user has access to this course
-    is_teacher = request.user.is_teacher and course.teacher == request.user
-    is_admin = request.user.is_admin
-    is_student = request.user.is_student and request.user in course.students.all()
-    
-    if not (is_teacher or is_admin or is_student):
-        messages.error(request, "You don't have permission to view this course.")
-        return redirect('courses')
-    
-    # Get announcements for this course
-    announcements = Announcement.objects.select_related('author').filter(course=course).order_by('-created_at')[:5]
-    
-    # Get upcoming events for this course
-    upcoming_events = CalendarEvent.objects.select_related('created_by').filter(
-        course=course,
-        start_date__gte=timezone.now()
-    ).order_by('start_date')[:5]
-    
-    context = {
-        'course': course,
-        'announcements': announcements,
-        'upcoming_events': upcoming_events,
-        'is_teacher': is_teacher,
-        'is_admin': is_admin,
-        'is_student': is_student,
-        'enrolled_students_count': course.students.count(),
-    }
-    
-    return render(request, 'workflow/course_detail.html', context)
-
-@login_required
-def edit_course(request, pk):
-    """View for editing a course"""
-    course = get_object_or_404(Course.objects.select_related('teacher'), pk=pk)
-    
-    # Check if user has permission to edit this course
-    if not (request.user.is_admin or (request.user.is_teacher and course.teacher == request.user)):
-        messages.error(request, "You don't have permission to edit this course.")
-        return redirect('courses')
-    
-    if request.method == 'POST':
-        # Process form submission
-        name = request.POST.get('name')
-        code = request.POST.get('code')
-        description = request.POST.get('description')
-        
-        # Basic validation
-        if not name or not code:
-            messages.error(request, "Course name and code are required.")
-            return render(request, 'workflow/edit_course.html', {'course': course})
-        
-        # Check if course code already exists (excluding this course)
-        if Course.objects.filter(code=code).exclude(pk=pk).exists():
-            messages.error(request, f"Course code '{code}' already exists. Please use a different code.")
-            return render(request, 'workflow/edit_course.html', {'course': course})
-        
-        # Update course
-        try:
-            course.name = name
-            course.code = code
-            course.description = description
-            course.save()
-            messages.success(request, f"Course '{course.name}' updated successfully!")
-            return redirect('course_detail', pk=course.pk)
-        except Exception as e:
-            messages.error(request, f"Error updating course: {str(e)}")
-            return render(request, 'workflow/edit_course.html', {'course': course})
-    
-    # GET request - display the form
-    return render(request, 'workflow/edit_course.html', {'course': course})
-
-@login_required
+@teacher_required
 def delete_course(request, pk):
     """View for deleting a course"""
     course = get_object_or_404(Course, pk=pk)
     
-    # Check if user has permission to delete this course
-    if not (request.user.is_admin or (request.user.is_teacher and course.teacher == request.user)):
+    # Verify permission
+    if not request.user.is_admin and course.teacher != request.user:
         messages.error(request, "You don't have permission to delete this course.")
         return redirect('courses')
     
     if request.method == 'POST':
         course_name = course.name
-        try:
-            course.delete()
-            messages.success(request, f"Course '{course_name}' has been deleted.")
-            return redirect('courses')
-        except Exception as e:
-            messages.error(request, f"Error deleting course: {str(e)}")
+        course.delete()
+        messages.success(request, f"Course '{course_name}' deleted successfully!")
+        return redirect('courses')
     
-    # GET request - display confirmation page
-    return render(request, 'workflow/delete_course.html', {'course': course})
-
-def register_view(request):
-    """View for user registration"""
-    if request.method == 'POST':
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            messages.success(request, "Registration successful! You can now log in.")
-            return redirect('login')
-    else:
-        form = UserCreationForm()
-    
-    return render(request, 'workflow/register.html', {'form': form})
+    context = {'course': course}
+    return render(request, 'workflow/delete_course.html', context)
 
 @login_required
 def announcement_detail(request, pk):
-    """View for displaying announcement details"""
-    announcement = get_object_or_404(Announcement.objects.select_related('course', 'author'), pk=pk)
+    """View details of an announcement"""
+    announcement = get_object_or_404(Announcement, pk=pk)
     
-    # Check if the user has access to this announcement
+    # Check if user has access to this announcement's course
     user = request.user
-    if user.is_admin:
-        has_access = True
-    elif user.is_teacher:
-        has_access = (announcement.author == user or 
-                     (announcement.course and announcement.course.teacher == user))
-    else:  # Student
-        has_access = announcement.course in user.enrolled_courses.all()
-    
-    if not has_access:
-        messages.error(request, "You don't have permission to view this announcement.")
+    if not user.is_admin and not (user.is_teacher and announcement.course.teacher == user) \
+            and announcement.course not in user.enrolled_courses.all():
+        messages.error(request, "You don't have access to this announcement.")
         return redirect('announcements')
     
     context = {
-        'announcement': announcement,
+        'announcement': announcement
     }
     
     return render(request, 'workflow/announcement_detail.html', context)
 
-def frontend_view(request, path=''):
-    """
-    View to serve the Next.js frontend application.
-    This will pass all non-API routes to the Next.js app.
-    """
-    return render(request, 'frontend/index.html')
+@login_required
+@teacher_required
+def create_announcement(request):
+    """Create a new announcement"""
+    user = request.user
+    
+    # Get available courses based on user role
+    if user.is_admin:
+        available_courses = Course.objects.all()
+    else:
+        available_courses = Course.objects.filter(teacher=user)
+    
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        course_id = request.POST.get('course')
+        important = request.POST.get('important') == 'on'
+        
+        if not title or not content or not course_id:
+            messages.error(request, "All fields are required.")
+        else:
+            try:
+                course = Course.objects.get(pk=course_id)
+                
+                # Check if user has permission to create announcement for this course
+                if not user.is_admin and course.teacher != user:
+                    messages.error(request, "You don't have permission to create announcements for this course.")
+                    return redirect('announcements')
+                
+                announcement = Announcement.objects.create(
+                    title=title,
+                    content=content,
+                    course=course,
+                    author=user,
+                    important=important
+                )
+                
+                messages.success(request, "Announcement created successfully!")
+                return redirect('announcement_detail', pk=announcement.pk)
+                
+            except Course.DoesNotExist:
+                messages.error(request, "Invalid course selected.")
+            except Exception as e:
+                messages.error(request, f"Error creating announcement: {str(e)}")
+    
+    context = {'available_courses': available_courses}
+    return render(request, 'workflow/create_announcement.html', context)
 
-from django.middleware.csrf import get_token, rotate_token
-from django.http import JsonResponse
-from django.views.decorators.csrf import ensure_csrf_cookie
+@login_required
+@admin_required
+def create_user(request):
+    """Admin view to create a new user"""
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        
+        if form.is_valid():
+            user = form.save(commit=False)
+            
+            # Set role based on form data
+            role = request.POST.get('role', 'student')
+            if role == 'admin':
+                user.is_admin = True
+                user.is_staff = True  # Django admin access
+            elif role == 'teacher':
+                user.is_teacher = True
+            else:
+                user.is_student = True
+            
+            # Set additional fields if provided
+            user.first_name = request.POST.get('first_name', '')
+            user.last_name = request.POST.get('last_name', '')
+            user.email = request.POST.get('email', '')
+            
+            user.save()
+            messages.success(request, f"User '{user.username}' created successfully!")
+            return redirect('user_management')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = UserCreationForm()
+    
+    context = {'form': form}
+    return render(request, 'workflow/create_user.html', context)
 
+# API view functions
 @ensure_csrf_cookie
 def get_csrf_token(request):
-    """
-    Endpoint to get a CSRF token.
-    This is helpful for frontend applications that need to make authenticated requests.
-    """
-    token = get_token(request)
-    return JsonResponse({"csrfToken": token})
-
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.contrib.auth import authenticate, login, logout
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework import status
+    """Get CSRF token for API calls"""
+    return JsonResponse({'detail': 'CSRF cookie set'})
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def login_api(request):
     """API endpoint for user login"""
     username = request.data.get('username')
     password = request.data.get('password')
     
     if not username or not password:
-        return Response(
-            {'detail': 'Please provide both username and password'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response({'detail': 'Username and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
     
-    try:
-        user = authenticate(request, username=username, password=password)
-        
-        if user is None:
-            return Response(
-                {'detail': 'Invalid credentials'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
-        if not user.is_active:
-            return Response(
-                {'detail': 'This account is inactive'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        
+    user = authenticate(username=username, password=password)
+    
+    if user is not None:
         login(request, user)
-        # Rotate CSRF token on login for security
-        rotate_token(request)
-        
-        serializer = UserSerializer(user)
-        return Response(serializer.data)
-        
-    except Exception as e:
-        print(f"Login error: {str(e)}")  # For debugging
-        return Response(
-            {'detail': 'An error occurred during login'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({
+            'detail': 'Login successful',
+            'user': UserSerializer(user).data
+        })
+    else:
+        return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def logout_api(request):
     """API endpoint for user logout"""
     logout(request)
-    return Response({'detail': 'Successfully logged out'})
+    return Response({'detail': 'Logout successful'})
 
 @api_view(['GET'])
-@ensure_csrf_cookie
-def get_csrf_token(request):
-    """Get CSRF token for frontend"""
-    token = get_token(request)
-    return Response({'csrfToken': token})
-
-@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
 def current_user_api(request):
-    """Get current user information"""
-    if not request.user.is_authenticated:
-        return Response(
-            {'detail': 'Not authenticated'}, 
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
+    """API endpoint to get current user info"""
     serializer = UserSerializer(request.user)
     return Response(serializer.data)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def register_api(request):
     """API endpoint for user registration"""
     serializer = UserSerializer(data=request.data)
+    
     if serializer.is_valid():
         user = serializer.save()
-        if user:
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        user.set_password(request.data.get('password'))
+        user.save()
+        
+        # Log in the user
+        login(request, user)
+        
+        return Response({
+            'detail': 'Registration successful',
+            'user': UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED)
+    
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@require_http_methods(["GET", "POST"])
+def register_view(request):
+    """View for user registration"""
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+        
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            # By default, new users are students
+            user.is_student = True
+            user.save()
+            
+            # Auto-login after registration
+            login(request, user)
+            messages.success(request, f"Welcome to University Workflow, {user.username}!")
+            return redirect('dashboard')
+    else:
+        form = UserCreationForm()
+    
+    return render(request, 'workflow/login.html', {'form': form, 'registration': True})

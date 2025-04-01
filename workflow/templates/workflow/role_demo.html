@@ -30,26 +30,26 @@
                 <div class="card-body">
                     <h6>Common Navigation for All Users:</h6>
                     <ul class="list-group mb-3">
-                        <li class="list-group-item">Dashboard</li>
-                        <li class="list-group-item">Courses</li>
-                        <li class="list-group-item">Calendar</li>
-                        <li class="list-group-item">Announcements</li>
-                        <li class="list-group-item">Kanban Boards</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Dashboard</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Courses</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Calendar</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Announcements</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Kanban Boards</li>
                     </ul>
 
                     {% if user.is_teacher or user.is_admin %}
                     <h6>Teacher-Only Navigation:</h6>
                     <ul class="list-group mb-3">
-                        <li class="list-group-item">Manage Courses</li>
-                        <li class="list-group-item">Reports</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Manage Courses</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Reports</li>
                     </ul>
                     {% endif %}
 
                     {% if user.is_admin %}
                     <h6>Admin-Only Navigation:</h6>
                     <ul class="list-group">
-                        <li class="list-group-item">Admin Panel</li>
-                        <li class="list-group-item">User Management</li>
+                        <li class="list-group-item" style="color: #000000 !important;">Admin Panel</li>
+                        <li class="list-group-item" style="color: #000000 !important;">User Management</li>
                     </ul>
                     {% endif %}
                 </div>
@@ -146,11 +146,12 @@
                     <h5 class="card-title mb-0">Admin-Only Actions</h5>
                 </div>
                 <div class="card-body">
+                    <p style="color: #000000 !important;">Admin Use this is in role demo</p>
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">Manage User Accounts</a>
-                        <a href="#" class="list-group-item list-group-item-action">System Configuration</a>
-                        <a href="#" class="list-group-item list-group-item-action">View System Logs</a>
-                        <a href="#" class="list-group-item list-group-item-action">Database Backup & Restore</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Manage Users</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">System Settings</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">View Logs</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Database Admin</a>
                     </div>
                 </div>
             </div>
@@ -163,10 +164,10 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">Create Course Content</a>
-                        <a href="#" class="list-group-item list-group-item-action">Manage Assignments</a>
-                        <a href="#" class="list-group-item list-group-item-action">Grade Student Work</a>
-                        <a href="#" class="list-group-item list-group-item-action">Generate Course Reports</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Create Course Content</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Manage Assignments</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Grade Student Work</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Generate Course Reports</a>
                     </div>
                 </div>
             </div>
@@ -174,15 +175,15 @@
 
             {% if user.is_student %}
             <div class="card mb-4">
-                <div class="card-header bg-success text-white">
+                <div class="card-header bg-info text-white">
                     <h5 class="card-title mb-0">Student-Only Actions</h5>
                 </div>
                 <div class="card-body">
                     <div class="list-group">
-                        <a href="#" class="list-group-item list-group-item-action">Submit Assignments</a>
-                        <a href="#" class="list-group-item list-group-item-action">View Grades</a>
-                        <a href="#" class="list-group-item list-group-item-action">Course Registration</a>
-                        <a href="#" class="list-group-item list-group-item-action">Request Academic Support</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">View Grades</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Submit Assignment</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">Join Course</a>
+                        <a href="#" class="list-group-item list-group-item-action" style="color: #000000 !important;">View Attendance</a>
                     </div>
                 </div>
             </div>

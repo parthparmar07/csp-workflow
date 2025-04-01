@@ -186,6 +186,17 @@ class Announcement(BaseModel):
     important = models.BooleanField(default=False)
     attachment = models.FileField(upload_to='announcements/', null=True, blank=True)
     
+    def clean(self):
+        """Validate announcement data"""
+        if len(self.title) < 5:
+            raise ValidationError("Title must be at least 5 characters long")
+        if len(self.content) < 10:
+            raise ValidationError("Content must be at least 10 characters long")
+    
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+    
     def __str__(self):
         return f"{self.title} - {self.course.code}"
 
@@ -229,8 +240,21 @@ class KanbanCard(BaseModel):
     
     def move_to_column(self, column):
         """Move card to a different column"""
-        self.column = column
-        self.save()
+        from django.db import transaction
+        
+        with transaction.atomic():
+            old_column = self.column
+            self.column = column
+            self.save()
+            
+            # Log the movement (for demonstration of OOP concepts)
+            try:
+                from django.utils import timezone
+                self.description += f"\n[{timezone.now().strftime('%Y-%m-%d %H:%M')}] Moved from '{old_column.title}' to '{column.title}'"
+                self.save(update_fields=['description'])
+            except Exception:
+                # Don't let logging failure stop the move operation
+                pass
     
     def __str__(self):
         return self.title
@@ -385,29 +409,32 @@ class WorkflowInstance(BaseModel):
     
     def advance_step(self):
         """Move workflow to the next step"""
-        if not self.current_step:
-            # Initialize with first step
-            try:
-                self.current_step = self.template.steps.order_by('order').first()
-                self.save()
-                return True
-            except WorkflowStep.DoesNotExist:
-                raise InvalidWorkflowStateException("No steps defined in this workflow")
-        else:
-            # Move to next step
-            try:
-                next_step = self.template.steps.filter(order__gt=self.current_step.order).order_by('order').first()
-                if next_step:
-                    self.current_step = next_step
+        from django.db import transaction
+        
+        with transaction.atomic():
+            if not self.current_step:
+                # Initialize with first step
+                try:
+                    self.current_step = self.template.steps.order_by('order').first()
                     self.save()
                     return True
-                else:
-                    # Workflow completed
-                    self.current_step = None
-                    self.save()
-                    return False
-            except WorkflowStep.DoesNotExist:
-                raise InvalidWorkflowStateException("No next step available")
+                except WorkflowStep.DoesNotExist:
+                    raise InvalidWorkflowStateException("No steps defined in this workflow")
+            else:
+                # Move to next step
+                try:
+                    next_step = self.template.steps.filter(order__gt=self.current_step.order).order_by('order').first()
+                    if next_step:
+                        self.current_step = next_step
+                        self.save()
+                        return True
+                    else:
+                        # Workflow completed
+                        self.current_step = None
+                        self.save()
+                        return False
+                except WorkflowStep.DoesNotExist:
+                    raise InvalidWorkflowStateException("No next step available")
     
     def get_current_end_date(self):
         """Calculate the end date for the current step"""
